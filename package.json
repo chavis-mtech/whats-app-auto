@@ -1,0 +1,25 @@
+{
+  "name": "whatsapp-auto",
+  "version": "1.0.3",
+  "private": true,
+  "type": "module",
+  "description": "Local-first WhatsApp workspace with a Thai beginner-friendly UI",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release.ps1"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/node": "4.3.5",
+    "tailwindcss": "4.3.5",
+    "@playwright/test": "1.58.2"
+  }
+}

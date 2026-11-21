@@ -1,0 +1,15 @@
+import { compile } from '@tailwindcss/node';
+import { readFile,writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const base=resolve('public');
+const generator=(await readFile(resolve(base,'api-examples.js'),'utf8')).replace(/^export /gm,'');
+let app=await readFile(resolve(base,'app.js'),'utf8');
+app=app.replace(/^import \{allowedExampleTargets,exampleSelectionScope,createApiExamples\} from '\.\/api-examples\.js';\r?\n/,'');
+app=app.replace(/^\/\/ BEGIN GENERATED API EXAMPLES[\s\S]*?\/\/ END GENERATED API EXAMPLES\r?\n/,'');
+app=`// BEGIN GENERATED API EXAMPLES\n${generator}\n// END GENERATED API EXAMPLES\n${app}`;
+await writeFile(resolve(base,'app.js'),app);
+const compiler=await compile(await readFile(resolve(base,'input.css'),'utf8'),{base,onDependency(){}});
+const source=await readFile(resolve(base,'app.js'),'utf8')+await readFile(resolve(base,'index.html'),'utf8');
+const candidates=[...new Set(source.match(/[A-Za-z0-9_!@#%.,:\/\[\]()-]+/g)||[])];
+await writeFile(resolve(base,'styles.css'),compiler.build(candidates));
+console.log('Built local Tailwind CSS. No external font, script or CDN is required.');

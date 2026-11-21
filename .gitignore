@@ -1,0 +1,13 @@
+node_modules/
+release/
+.test-state*/
+.verification*/
+.portable-verification*/
+.portable-extracted*/
+scripts/*.zip
+*.log
+.env
+data/
+auth/
+test-results/
+playwright-report/
