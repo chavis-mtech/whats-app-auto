@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-auto",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "private": true,
   "type": "module",
   "description": "Local-first WhatsApp workspace with a Thai beginner-friendly UI",
@@ -15,11 +15,12 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "7.0.0-rc14",
+    "fastify": "5.12.8",
     "qrcode": "1.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "1.58.2",
     "@tailwindcss/node": "4.3.5",
-    "tailwindcss": "4.3.5",
-    "@playwright/test": "1.58.2"
+    "tailwindcss": "4.3.5"
   }
 }

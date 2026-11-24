@@ -39,8 +39,8 @@ Invoke-RestMethod 'http://127.0.0.1:4318/api/groups' -Headers $headers
 | GET/POST | `/jobs` | List/create current-mode jobs. Maximum 200 across modes. |
 | PUT/DELETE | `/jobs/:id` | Replace editable job fields/delete. Editing resets inbox cursor to now. |
 | POST | `/jobs/preview` | Draft fields → `{text,skip,cursor}`. Does not send. Draft inbox preview can use current stored messages. |
-| POST | `/jobs/:id/run` | Explicit immediate run, even for paused jobs. Each deliberate call is a new manual attempt; do not auto-retry this endpoint after a timeout. |
-| POST | `/jobs/:id/toggle` | Enable/pause. Rejects expired one-time dates. |
+| POST | `/jobs/:id/run` | Explicit immediate run, even for paused jobs. File tasks require a fresh same-config `previewToken` in the JSON body. Each deliberate call is a new manual attempt; do not auto-retry this endpoint after a timeout. |
+| POST | `/jobs/:id/toggle` | Enable/pause. Rejects expired one-time dates. To enable a file task, use preview + PUT instead. |
 | GET | `/runs` | Recent 300 run receipts across modes; UI filters to the active mode. No request key/hash is exposed. |
 | GET | `/export` | Current-mode inspection JSON attachment; no token/hash/password/credentials. Not a backup. |
 | POST | `/token` | Browser-only `{password,rotate:false}` reveals token; true rotates immediately. |
@@ -143,3 +143,46 @@ POST that object to `/jobs`. `source` is `text`, `json` or `inbox`; inbox also r
 Templates support `{{data}}`, `{{now}}`, and own-property dot paths such as `{{json.report.total}}`. Missing values become empty strings, object values are JSON. There is no expression execution. Fetching is public HTTPS GET only, 10-second timeout and 1 MB response limit. URLs with embedded credentials are rejected. Authentication headers/private API gateways are not supported by this build.
 
 Manual task execution is intentionally explicit and creates a distinct attempt per call. To build a retrying integration, use `/send` with a fixed Idempotency-Key after rendering your own data, or check `/runs` before a deliberate manual re-run. Busy responses occur before a provider call and are safe to revisit with the same send key.
+
+## Latest-file task
+
+```json
+{
+  "name": "Daily document",
+  "target": "<approved-recipient-jid>",
+  "source": "file",
+  "folder": "C:/Reports/Daily",
+  "extensions": [".pdf"],
+  "settleSeconds": 30,
+  "sendOnlyChanged": true,
+  "dateBasis": "now",
+  "dateLocale": "th-TH",
+  "template": "Ai สรุปงาน <date.format(DD.MM.BB)>",
+  "schedule": "daily",
+  "time": "09:00",
+  "timezone": "Asia/Bangkok",
+  "enabled": false
+}
+```
+
+POST the draft to `/jobs/preview`. A successful file preview returns `{text,file,previewToken}` with filename, size, modifiedAt, SHA256 and version fingerprint, never document bytes. An unavailable source returns `{waiting:true,reason}` without a token. Use the returned token in the same draft plus `enabled:true` when creating/replacing the job. It expires after five minutes and is consumed once; configuration/mode changes require another preview. Saving paused does not require it. A manual `/jobs/:id/run` likewise takes `{previewToken}` from a fresh preview of the saved configuration.
+
+Extension filters accept an array or comma-separated string, normalize to lowercase dotted forms, and require 1–16 entries. `settleSeconds` is 5–3600. Dates use the job timezone; `dateBasis: "now"` means actual run/preparation time, while `"modified"` explicitly chooses the selected file timestamp. `BB` is two-digit Buddhist year, `BBBB` full Buddhist year and `YYYY` Gregorian year. `dateLocale` is `th-TH` or `en-GB` for textual month/weekdays. The file is sent as a single document with `caption`; a PDF uses application/pdf. Visual PDF thumbnails are client/provider controlled.
+
+`waiting_for_file` preserves the due slot and failure budget; the connected scheduler revisits after 30 seconds. `file_unchanged` skips a previously recorded version for this job/destination/mode when `sendOnlyChanged` is true. File receipts include metadata/hash, not document bytes. Unknown submission rules remain unchanged. See [the full date/stability/OneDrive guide](LATEST-FILE.md).
+
+## Multi-file plans and TXT source (1.0.5)
+
+Latest-file drafts also accept fileCount (integer 1–10, default 1) and filePeriod ("latestDay", default, or "any"). latestDay means the newest matching modification date in the job timezone. N is a maximum; no older-day backfill occurs. Multi-file preview returns files[] metadata, selection {requestedCount,availableCount,day,shortfall} and previewToken, with no payload bytes. Single-file response retains file for compatibility. See LATEST-FILE.md for exact limits and stability semantics.
+
+For latest TXT text use source: "fileText", folder and a template containing {{data}}. Extensions are forced to .txt and count to one. Strict UTF-8 input is limited to 65,536 bytes and output to 16,000 characters. Preview approval is required for enabling, toggling on or manually running both file and fileText sources. Saved paused drafts remain allowed.
+
+Jobs with pendingBatch cannot be edited/deleted. POST /jobs/:id/resume-batch with {"reviewedUnknown":true} explicitly skips unknown items after operator review and sends only pending snapshots. It never retries unknown items. POST /jobs/:id/cancel-batch with {"confirm":true} cancels remaining items and pauses the job. Receipt history remains. Each batch item carries batchId/batchIndex and its own status; batch_complete_reviewed means completion includes reviewed unknown outcomes, not verified delivery. Never modify private batch files or the ledger to retry.
+
+## Session age and notification settings
+
+GET /state includes sessionAge {known,days,pairedAt,warn,thresholdDays,notice}. Legacy/incomplete evidence returns known:false and days:null. Age counts elapsed 24-hour days from observed pair-success subsequently authenticated as the expected account, not reconnect time. Ten days is a local maintenance threshold, not an official expiry.
+
+PUT /settings additionally accepts sessionNotifyEnabled (boolean, default false) and sessionNotifyTarget (an explicitly allowed live JID, blank by default). Enabling requires live mode and a valid allowed target. Mode/account changes or local reset disable reminders. Reset also clears the observed age. The monitor waits offline, rechecks consent/identity/allowance before invocation and uses a durable per-session/target idempotency key. Submitted/unknown notifications are not repeated after restart. See SESSION-AGE.md.
+
+The server now uses Fastify 5 with early auth/Host/Origin checks, bounded JSON parsing and trusted static schemas. Existing route shapes, bearer/cookie separation and idempotency requirements are retained. File bytes are never in API previews/exports; pending multi-file snapshots live in the private outbox directory and must accompany full-folder backups.

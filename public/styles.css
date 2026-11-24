@@ -224,6 +224,9 @@
   .mx-auto {
     margin-inline: auto;
   }
+  .my-4 {
+    margin-block: calc(var(--spacing) * 4);
+  }
   .mt-1 {
     margin-top: var(--spacing);
   }
@@ -445,6 +448,11 @@
     margin-block-start: calc(var(--spacing) * var(--tw-space-y-reverse));
     margin-block-end: calc(var(--spacing) * calc(1 - var(--tw-space-y-reverse)));
   }
+  :where(.space-y-3 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 3) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 3) * calc(1 - var(--tw-space-y-reverse)));
+  }
   :where(.space-y-4 > :not(:last-child)) {
     --tw-space-y-reverse: 0;
     margin-block-start: calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
@@ -608,6 +616,12 @@
   .bg-\[\#edf2e7\] {
     background-color: #edf2e7;
   }
+  .bg-\[\#edf3e8\] {
+    background-color: #edf3e8;
+  }
+  .bg-\[\#eef3e8\] {
+    background-color: #eef3e8;
+  }
   .bg-\[\#f4f7f0\] {
     background-color: #f4f7f0;
   }
@@ -622,6 +636,12 @@
   }
   .bg-\[\#f9fbf7\] {
     background-color: #f9fbf7;
+  }
+  .bg-\[\#fff1d7\] {
+    background-color: #fff1d7;
+  }
+  .bg-\[\#fff7e8\] {
+    background-color: #fff7e8;
   }
   .bg-\[\#fffaf0\] {
     background-color: #fffaf0;
@@ -913,6 +933,9 @@
   }
   .text-\[\#a6b1a1\] {
     color: #a6b1a1;
+  }
+  .text-\[\#a0774a\] {
+    color: #a0774a;
   }
   .text-\[\#b1c8bb\] {
     color: #b1c8bb;

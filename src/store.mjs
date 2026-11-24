@@ -29,6 +29,9 @@ export async function openStore(directory) {
   if(state.confirmedAccount&&(!/^[1-9]\d{7,14}$/.test(state.confirmedAccount)||state.confirmedAccount!==state.settings.expectedPhone)){state.confirmedAccount='';state.settings.autoResume=false;}
   for(const message of state.messages)if(!message.seq)message.seq=++state.messageSequence;
   for (const run of state.runs) if (run.status === 'submitting') { run.status = 'unknown'; run.error = 'Application stopped before submission outcome was saved. Inspect WhatsApp before retrying.'; }
+  if(state.sessionNotice?.status==='submitting')state.sessionNotice.status='unknown';
+  for(const notice of Object.values(state.sessionNoticeMap||{}))if(notice.status==='submitting')notice.status='unknown';
+  for(const job of state.jobs)if(job.pendingBatch)for(const item of job.pendingBatch.items||[])if(item.status==='submitting'){const receipt=state.runs.find(run=>run.id===item.runId);item.status=receipt&&['submitted','simulated'].includes(receipt.status)?receipt.status:receipt?.status==='not_submitted'?'pending':'unknown';if(item.status==='unknown'){job.enabled=false;job.lastResult='batch_needs_review';}}
   for(const run of state.runs)if(run.status==='unknown'&&run.jobId){const job=state.jobs.find(j=>j.id===run.jobId);if(job)job.enabled=false;}
   let queue = Promise.resolve();
   const save = () => { const snapshot = JSON.stringify(state, null, 2); queue = queue.then(async () => { await writeFile(`${path}.tmp`, snapshot, {mode:0o600}); await rename(`${path}.tmp`, path); }); return queue; };

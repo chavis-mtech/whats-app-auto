@@ -18,8 +18,21 @@
 | Submission unknown | Inspect the WhatsApp destination. Do not blindly resend or change idempotency key. An affected job pauses. A returned message ID means submitted, not delivered. |
 | Job did not send | App/machine must be awake and connected; verify enabled state, job mode, destination, timezone and due time. Preparation failures pause after three attempts. Inbox tasks need new non-own/non-history messages after save; old data is skipped. |
 | JSON source fails | Add the exact public hostname. Only public HTTPS GET port 443, no URL credentials, redirects or headers, valid JSON up to 1 MB, 10-second timeout. Narrow large rendered outputs to specific fields. |
+| Latest-file job waits | Check the folder on the machine running the app, Windows permissions, extension filter, newest matching file size and stability age. Cache OneDrive files with Always keep on this device. The app waits instead of silently sending an older report. See LATEST-FILE.md. |
+| File job skips a document | Changed-version suppression defaults on. The same path/content version already recorded for this job/destination/mode is skipped, including an unknown attempt. Inspect the prior result before deliberately enabling repeat sends. |
+| File task cannot enable/run | Click preview for the same saved/intended configuration, inspect filename/caption and use it within five minutes. Changing fields invalidates preview. A missing/unavailable file cannot produce approval. |
+| Caption year is wrong | Use BB/BBBB for Buddhist year; YY/YYYY are Gregorian. Check the job timezone and default actual-run date basis. DD.MM.BB produces dates such as 20.11.69 for November 2026. |
 | Background task blocked | A Windows/company Task Scheduler policy may prohibit registration. Read the displayed PowerShell error. Use Start.cmd manually or ask the local administrator to review policy. No UAC elevation or credential collection is implemented. |
 | ZIP does not run on another architecture | This portable release is Windows x64 only. ARM64 Windows may use x64 emulation but has not been validated; 32-bit Windows is unsupported. |
 | State file unreadable | Stop the app and restore a secure full-folder backup. The app deliberately does not replace a damaged file with a new empty state. |
 
 Private logs are `%LOCALAPPDATA%\WhatsAppAuto\startup.log` and `error.log` when launched with Start.cmd. They intentionally omit message content and credentials. Redact paths/account identifiers before sharing diagnostics. Do not attach the private state or auth folder to bug reports.
+
+## Multi-file and session-age outcomes
+
+- Fewer files than requested: the count is a maximum, restricted by the newest matching file’s calendar date in the job timezone unless across-days is selected. The preview reports shortfall; older days are not silently added. Already-recorded versions may reduce actual sends further.
+- Batch paused/unknown: inspect the recipient first. Open the job’s pending-batch dialog and explicitly skip reviewed unknown items to send only never-started items, or cancel the remainder. Unknown items are never replayed by resume. A completion with reviewed unknowns does not assert delivery of those items.
+- Pending snapshot unavailable/corrupt: the job pauses; it never rereads a changed source as a replacement for the frozen plan. Restore a consistent full-folder backup or explicitly cancel after reviewing receipts.
+- TXT waits/fails: use a nonempty UTF-8 file (optional BOM), at most 65,536 bytes, no NUL, and final output at most 16,000 characters. Convert legacy ANSI/UTF-16 explicitly; the app does not guess encodings or truncate content.
+- Session age unknown: normal for a session paired before observation was introduced. Reconnect is not fresh pairing. Preserve a working session; do not reset solely to get an age.
+- No age reminder: opt in, choose an allowed live destination, keep the app connected and wait for the minute check. Unknown or submitted reminders are not repeated. The warning is a maintenance heuristic, not an official expiry. See SESSION-AGE.md.

@@ -9,5 +9,10 @@ scripts/*.zip
 .env
 data/
 auth/
+/outbox/
+/state.json
+/state.json.tmp
+/instance.lock
+/launcher.json
 test-results/
 playwright-report/

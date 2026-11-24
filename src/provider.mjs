@@ -4,9 +4,10 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { assert } from './security.mjs';
 import { normalizeExpectedPhone,verifiedIdentityPhone } from './phone.mjs';
+import {notePairingCandidate,confirmObservedPairing,pairingIdentity,hasLinkedAuth} from './session-age.mjs';
 
 export class WhatsAppProvider extends EventEmitter {
-  constructor(store,directory,{loadBaileys=()=>import('@whiskeysockets/baileys')}={}) { super();this.store=store;this.directory=directory;this.loadBaileys=loadBaileys;this.status='disconnected';this.qr='';this.groups=[];this.socket=null;this.active=false;this.retries=0;this.generation=0;this.authWrites=Promise.resolve(); }
+  constructor(store,directory,{loadBaileys=()=>import('@whiskeysockets/baileys'),now=Date.now}={}) { super();this.store=store;this.directory=directory;this.loadBaileys=loadBaileys;this.now=now;this.status='disconnected';this.qr='';this.groups=[];this.socket=null;this.active=false;this.retries=0;this.generation=0;this.authWrites=Promise.resolve(); }
   get mode() {return this.store.state.settings.mode;}
   info() {return {mode:this.mode,status:this.status,qr:!!this.qr,account:this.account||'',contactsScope:'Synced and observed contacts only; not the full phone address book.',lastError:this.lastError||''};}
   async capture(message) {
@@ -14,7 +15,7 @@ export class WhatsAppProvider extends EventEmitter {
     message.seq=++this.store.state.messageSequence;
     this.store.state.messages.push(message);this.store.state.messages=this.store.state.messages.slice(-this.store.state.settings.retention);await this.store.save();this.emit('message',message);
   }
-  credentialMatches(creds) {let expected;try{expected=normalizeExpectedPhone(this.store.state.settings.expectedPhone);}catch{return false;}return creds?.registered===true&&verifiedIdentityPhone(creds.me)===expected&&this.store.state.confirmedAccount===expected;}
+  credentialMatches(creds) {let expected;try{expected=normalizeExpectedPhone(this.store.state.settings.expectedPhone);}catch{return false;}return hasLinkedAuth(creds)&&verifiedIdentityPhone(creds.me)===expected&&this.store.state.confirmedAccount===expected;}
   async disableResume(message) {this.store.state.settings.autoResume=false;this.lastError=message;await this.store.save();}
   async resumeOnStartup() {
     if(this.mode!=='live'||this.store.state.settings.autoResume!==true)return {attempted:false,reason:'disabled'};
@@ -57,11 +58,12 @@ export class WhatsAppProvider extends EventEmitter {
       sock.ev.on('messages.update',async updates=>{if(!valid())return;let changed=false;for(const {key,update} of updates){if(Number(update.status)>=3){for(const run of this.store.state.runs)if(run.messageId===key.id){run.delivery=Number(update.status)>=4?'read':'delivered';changed=true;}}}if(changed)await this.store.save().catch(()=>{});});
       sock.ev.on('connection.update',async update=>{
         if(!valid())return;
-        if(update.qr){if(resumeOnly){this.disconnect();this.status='needs_pairing';await this.disableResume('The linked session requires pairing. Automatic resume was disabled; open Connect manually.');return;}this.qr=update.qr;this.status='qr';}
+        if(update.isNewLogin&&this.store.state.pairingCandidate?.identity===pairingIdentity(state.creds)){const candidate=this.store.state.pairingCandidate,account=verifiedIdentityPhone(state.creds.me);if(account&&account===candidate.account){candidate.pairSuccessObserved=true;candidate.pairSuccessAt=this.now();candidate.successAccount=account;}await this.store.save();if(!valid())return;}
+        if(update.qr){if(resumeOnly){this.disconnect();this.status='needs_pairing';await this.disableResume('The linked session requires pairing. Automatic resume was disabled; open Connect manually.');return;}this.qr=update.qr;this.status='qr';if(notePairingCandidate(this.store,state.creds,this.store.state.settings.expectedPhone,this.now()))await this.store.save();}
         if(update.connection==='open'){
           const number=verifiedIdentityPhone(sock.user);
           if(!number||number!==this.store.state.settings.expectedPhone){this.disconnect();this.store.state.confirmedAccount='';await this.disableResume(number?'เบอร์บัญชีที่เชื่อมต่อไม่ตรงกับเบอร์ที่ตั้งค่าไว้ โปรดตรวจสอบรูปแบบเบอร์ (เบอร์ไทยตัด 0 หน้าแล้วใส่ 66) และบัญชีบนโทรศัพท์ แก้ไขเบอร์แล้วลองเชื่อมต่ออีกครั้ง โดยยังไม่ต้องลบเซสชัน':'ยังยืนยันเบอร์บัญชีที่เชื่อมต่อไม่ได้ ระบบได้รับรหัส LID หรือข้อมูลที่ไม่ใช่เบอร์โทร โปรดตรวจสอบบัญชีบนโทรศัพท์แล้วลองเชื่อมต่ออีกครั้ง โดยยังไม่ต้องลบเซสชัน');return;}
-          this.store.state.confirmedAccount=number;await this.store.save();if(!valid())return;
+          this.store.state.confirmedAccount=number;confirmObservedPairing(this.store,state.creds,number,this.now());await this.store.save();if(!valid())return;
           this.account=number;this.status='connected';this.qr='';this.retries=0;try{await this.refreshGroups();}catch{this.lastError='Connected; group refresh failed. Try refreshing again.';}
         }
         if(update.connection==='close'){

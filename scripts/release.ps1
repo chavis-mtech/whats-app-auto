@@ -1,4 +1,4 @@
-param([string]$Version='1.0.3')
+param([string]$Version='1.0.5')
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Set-Location -LiteralPath $root
@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $releaseRoot -Force | Out-Null
 $stage=Join-Path $releaseRoot "WhatsAppAuto-$Version-win-x64"
 if (Test-Path -LiteralPath $stage) { throw "Stage already exists; move it aside before rebuilding: $stage" }
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
-foreach ($name in @('src','public','docs','test','scripts','package.json','package-lock.json','README.md','THIRD-PARTY-NOTICES.md','Start.cmd','Stop.cmd','Status.cmd','Install-Background.cmd','Uninstall-Background.cmd')) {
+foreach ($name in @('.github','src','public','docs','test','scripts','package.json','package-lock.json','README.md','THIRD-PARTY-NOTICES.md','Start.cmd','Stop.cmd','Status.cmd','Install-Background.cmd','Uninstall-Background.cmd')) {
   if ($name -eq 'scripts') { New-Item -ItemType Directory -Path (Join-Path $stage 'scripts') | Out-Null; foreach($scriptName in @('manage.ps1','build.mjs','release.ps1','SHASUMS256.txt')) {Copy-Item -LiteralPath (Join-Path $root "scripts/$scriptName") -Destination (Join-Path $stage "scripts/$scriptName")} }
   else { Copy-Item -LiteralPath (Join-Path $root $name) -Destination $stage -Recurse }
 }

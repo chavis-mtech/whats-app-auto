@@ -8,6 +8,7 @@ Runtime components include:
 | --- | --- | --- |
 | Node.js Windows x64 | 24.20.0 | Node.js license and bundled third-party notices are in `runtime/NODE-LICENSE.txt` in the portable release. |
 | @whiskeysockets/baileys | 7.0.0-rc14 | MIT; installed package license remains under node_modules. Unofficial WhatsApp linked-device library. |
+| Fastify | 5.12.8 | MIT; installed package license remains under node_modules. |
 | qrcode | 1.5.4 | MIT; installed package license remains under node_modules. |
 | Tailwind CSS / @tailwindcss/node (build only) | 4.3.5 | MIT. Compiled local stylesheet shipped; compiler not a runtime dependency. |
 | Playwright (test only) | 1.58.2 | Apache-2.0; not included in the production dependency tree. |
